@@ -108,9 +108,9 @@ class DeathDayEvaluator:
     def refresh_info(self):
         # Repopulate page titles with information from worm_info
         for label in self.labels:
-            if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label]:
+            if label != 'Notes' and (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label]:
                 self.rw.flipbook.pages[
-                    self.worm_info.loc[self.worm_positions[self.well_index]][label]].name=label
+                    int(self.worm_info.loc[self.worm_positions[self.well_index]][label])].name=label
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
             self.rw.qt_object.nf.set_text(self.worm_info.loc[self.worm_positions[self.well_index]]['Notes'])
         else:
