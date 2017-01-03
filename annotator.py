@@ -19,7 +19,8 @@ TODO:
 
 class DeathDayEvaluator:
     def __init__(self, in_dir, image_glob, labels,autosave_dir=None, start_idx=0, stop_idx=None):
-        self.rw = RisWidgetAnnotator()
+        self.rw = ris_widget.RisWidget()
+        self._init_notefield()
         
         if type(autosave_dir) is str:
             self.autosave_dir = pathlib.Path(autosave_dir)
@@ -50,7 +51,15 @@ class DeathDayEvaluator:
         self._add_action('Goto Index', QtGui.QKeySequence('Ctrl+G'), self.goto_index)
         self.rw.qt_object.main_view_toolbar.addAction(self.actions[-1])
         self.rw.show()
- 
+
+    def _init_notefield(self):  
+        self.nf = NoteField(parent=self.rw.qt_object)
+        self.nf_dock_w = Qt.QDockWidget('AnnotationNoteField')
+        self.nf_dock_w.setWidget(self.nf)
+        self.nf_dock_w.setAllowedAreas(Qt.Qt.BottomDockWidgetArea)
+        self.nf_dock_w.setFeatures(Qt.QDockWidget.DockWidgetFloatable | Qt.QDockWidget.DockWidgetMovable)
+        self.rw.qt_object.addDockWidget(Qt.Qt.BottomDockWidgetArea,self.nf_dock_w)
+
     
     def get_current_worm_position(self):
         return self.current_worm_position     
@@ -61,7 +70,7 @@ class DeathDayEvaluator:
                 if flipbook_page.name == my_label: 
                     #self.dictionary[self.current_worm_position][my_label]=time_idx
                     self.worm_info.set_value(self.worm_positions[self.well_index],my_label,time_idx+self.start_idx)
-        self.worm_info.set_value(self.worm_positions[self.well_index],'Notes',self.rw.qt_object.nf.get_text())
+        self.worm_info.set_value(self.worm_positions[self.well_index],'Notes',self.nf.get_text())
                     
         #return self.dictionary    
    
@@ -113,9 +122,9 @@ class DeathDayEvaluator:
                 self.rw.flipbook.pages[
                     int(self.worm_info.loc[self.worm_positions[self.well_index]][label])].name=label
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
-            self.rw.qt_object.nf.set_text(self.worm_info.loc[self.worm_positions[self.well_index]]['Notes'])
+            self.nf.set_text(self.worm_info.loc[self.worm_positions[self.well_index]]['Notes'])
         else:
-            self.rw.qt_object.nf.set_text('')
+            self.nf.set_text('')
     
     def save_annotations(self):
         self.record_labeled_positions() # Grab the latest annotations
@@ -172,65 +181,3 @@ class NoteField(Qt.QWidget):
     
     def clear_text(self):
         self.notebox.setText('')
-
-'''
-    Inherited RisWidget and the associated QtObject to add in the NoteField defined above
-'''
-
-class RisWidgetAnnotatorQtObject(ris_widget.RisWidgetQtObject):
-    main_view_change_signal = Qt.pyqtSignal(Qt.QTransform, Qt.QRectF)
-    
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self._init_notefield()
-    
-    def _init_notefield(self):  
-        self.nf = NoteField(parent=self)
-        self.nf_dock_w = Qt.QDockWidget('AnnotationNoteField')
-        self.nf_dock_w.setWidget(self.nf)
-        self.nf_dock_w.setAllowedAreas(Qt.Qt.BottomDockWidgetArea)
-        self.nf_dock_w.setFeatures(Qt.QDockWidget.DockWidgetFloatable | Qt.QDockWidget.DockWidgetMovable)
-        self.addDockWidget(Qt.Qt.BottomDockWidgetArea,self.nf_dock_w)
-
-class RisWidgetAnnotator(ris_widget.RisWidget):
-    QT_OBJECT_CLASS = RisWidgetAnnotatorQtObject
-    def __init__(
-        self,
-        window_title='RisWidget',
-        parent=None,
-        window_flags=Qt.Qt.WindowFlags(0),
-        msaa_sample_count=2,
-        swap_interval=1,
-        show=True,
-        layers = tuple(),
-        **kw):
-        global AUTO_CREATED_QAPPLICATION
-        if Qt.QApplication.instance() is None:
-            AUTO_CREATED_QAPPLICATION = Qt.QApplication(sys.argv)
-        self.qt_object = self.QT_OBJECT_CLASS(
-            app_prefs_name=self.APP_PREFS_NAME,
-            app_prefs_version=self.APP_PREFS_VERSION,
-            window_title=window_title,
-            parent=parent,
-            window_flags=window_flags,
-            msaa_sample_count=msaa_sample_count,
-            #swap_interval=swap_interval,       # Uncomment this; didn't work for my computer with old RisWidget
-            layers=layers,
-            **kw)
-        self.main_view_change_signal = self.qt_object.main_view_change_signal
-        for refdesc in self.COPY_REFS:
-            if isinstance(refdesc, str):
-                path, name = refdesc, refdesc
-            else:
-                path, name = refdesc
-                obj = self.qt_object
-            obj = self.qt_object
-            for element in path.split('.'):
-                obj = getattr(obj, element)
-            setattr(self, name, obj)
-        self.add_image_files_to_flipbook = self.flipbook.add_image_files
-        self.snapshot = self.qt_object.main_view.snapshot
-        if show:
-            self.show()
-
- 
