@@ -86,6 +86,7 @@ class DeathDayEvaluator:
             all_images=glob.glob(item+self.image_glob)
             all_images=list(map(pathlib.Path,all_images))
             meow.append(all_images)
+        print('finished parsing inputs')
         return meow, worm_positions
         
 
