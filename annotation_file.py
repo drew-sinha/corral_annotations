@@ -7,6 +7,7 @@ import numpy as np
 import json
 import pandas as pd
 import pathlib
+import os
 
 def find_char(string,ch):
     '''
@@ -21,11 +22,11 @@ class AnnotationFile:
                 input_data - str/pathlib.Path or pd.DataFrame compatible structure providing data to add to file
                 annotation_prefix - character to add to front of annotation; used for annotations coming from multiple experiments/metadata files
         '''
-        if type(input_data) is str or type(input_data) is pathlib.Path:
-            self.data = pd.read_table(input_data,dtype=str)
+        if type(input_data) is str or type(input_data) is pathlib.PosixPath or type(input_data) is pathlib.WindowsPath:
+            self.data = pd.read_csv(input_data,dtype=str,sep='\t')
         else:   # Assume compatible with pandas DataFrame
             self.data = pd.DataFrame(input_data,dtype=str)
-        self.data.fillna('')  # NOTE! Data is internally stored as an object of str's!
+        self.data = self.data.fillna('')  # NOTE! Data is internally stored as an object of str's!
         
         if annotation_prefix != '':
             for tag in self.data.keys():
@@ -100,6 +101,8 @@ class AnnotationFile:
                 restricted_list (numpy array suitable for indexing) - list for grabbing data from a specific set of worms
                 as_timepoints: Flag to pass back data as either hours post-expt start (False) or datetime string (True)
         '''
+        if type(metadata_file) is pathlib.PosixPath or type(metadata_file) is pathlib.WindowsPath:
+            metadata_file = str(metadata_file)
         
         out_data = self.data.copy()
         
@@ -107,15 +110,15 @@ class AnnotationFile:
             metadata_info = json.load(metadata_fp)
         
         # For each column in tsv,
-        for a_tag in out_data.keys():
-            out_data[a_tag][out_data[a_tag]=='']='-1'   # Empty field gets '-1'
+        for a_tag in out_data.keys(): 
+            out_data.loc[out_data[a_tag]=='',a_tag]='-1' # Empty field gets '-1'
             if a_tag != 'Notes' and a_tag != 'Worm':    # If not the non-time fields
                 if not as_timepoints:
                     out_data[a_tag]=np.array([metadata_info['timestamps'][int(time_idx)]-metadata_info['timestamps'][0] for time_idx in out_data[a_tag]])
-                    out_data[a_tag][self.data[a_tag]=='']=-1
+                    out_data.loc[self.data[a_tag]=='',a_tag]=-1
                 else:
                     out_data[a_tag]=np.array([metadata_info['timepoints'][int(time_idx)] for time_idx in out_data[a_tag]])
-                    out_data[a_tag][self.data[a_tag]=='']='-1'
+                    #out_data.loc[self.data[a_tag]=='',a_tag]='-1'      #Uncomment if needed?
                     
         
         if expt_name is not '':
@@ -125,6 +128,22 @@ class AnnotationFile:
             return out_data
         else:
             return out_data[restricted_list]
+    
+    def data_as_frames(self, expt_name='', restricted_list=None):
+        out_data =self.data.copy()
+        
+        for a_tag in out_data.keys(): 
+            if a_tag != 'Notes' and a_tag != 'Worm':    # If not the non-time fields
+                out_data[a_tag]=np.array([int(time_idx) if time_idx is not '' else -1 for time_idx in out_data[a_tag]])
+        
+        if expt_name is not '':
+            out_data['Worm_FullName'] = np.array([expt_name+' '+worm_name[1:] for worm_name in out_data['Worm']])
+
+        if restricted_list is None:
+            return out_data
+        else:
+            return out_data[restricted_list]
+        
     
     def get_goodworms(self, bad_worm_kws=[], restrict_to_hatched=False, expt_path=None):
         '''
@@ -141,12 +160,16 @@ class AnnotationFile:
         '''
         
         if len(bad_worm_kws) is 0:   # Use DEAD as marker
+            #~ viable_worm = (self.data['Hatch']!='') \
+                #~ & (self.data['Death']!='') \
+                #~ & np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
             viable_worm = (self.data['Hatch']!='') \
-                & (self.data['Death']!='') \
                 & np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
         else:
+            #~ viable_worm = (self.data['Hatch']!='') \
+                #~ & (self.data['Death']!='') \
+                #~ & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']])
             viable_worm = (self.data['Hatch']!='') \
-                & (self.data['Death']!='') \
                 & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']])
         
         goodworms = viable_worm #& worm_was_acquired
@@ -171,8 +194,9 @@ class AnnotationFile:
         
         good_worms = self.get_goodworms(bad_worm_kws=bad_worm_kws)
         dead_worms = np.array(['NOT DEAD' not in note for note in self.data['Notes']])
-        skip_idxs = np.where((not good_worms)|dead_worms)[0][0]
-        return [str(idx).zfill(len(self.data['Worm'][0].index)) for idx in skip_idxs]
+        skip_idxs = np.where((~good_worms)|dead_worms)[0]
+        index_str_size = np.count_nonzero([True if c.isdigit() else False for c in self.data['Worm'][0]])
+        return [str(idx).zfill(index_str_size) for idx in skip_idxs]
     
     def save_timestamp_tsv(self, output_file):        
         if type(output_file) is not pathlib.Path:
@@ -186,7 +210,7 @@ def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
         Builds super-table of timestamped data from multiple experiments
     '''
     
-    timestamped_data = {}
+    timestamped_data = pd.DataFrame()
     if md_dict is None:
         for expt_dir in expt_dirs: 
             ann_file = AnnotationFile(
@@ -196,7 +220,8 @@ def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
             else:
                 expt_name = expt_dir[find_char(expt_dir,os.path.sep)[-2]:-1]
             ann_file_data = ann_file.data_as_timestamps_simple(expt_dir+os.path.sep+'experiment_metadata.json',restricted_list=ann_file.get_goodworms(),expt_name=expt_name,as_timepoints=as_timepoints)
-            timestamped_data.append(ann_file_data)
+            print(ann_file_data)
+            timestamped_data = timestamped_data.append(ann_file_data)
     else:
         for expt_dir, md_map in zip(expt_dirs, md_dict):
             if expt_dir[-1] is not os.path.sep:
@@ -214,7 +239,8 @@ def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
                     annotation_prefix='D')
                 ann_file_data = ann_file.data_as_timestamps(md_map,restricted_list=ann_file.get_goodworms(),expt_name=expt_name, as_timepoints=as_timepoints)
             timestamped_data = timestamped_data.append(ann_file_data)
-    timestamped_data[np.isnan(timestamped_data)]=-1
+    #timestamped_data[np.isnan(timestamped_data)]=-1
+    timestamped_data = timestamped_data.fillna(-1)
     return timestamped_data
 
 def compile_expt_raw_data(expt_dirs):
@@ -233,7 +259,8 @@ def compile_expt_raw_data(expt_dirs):
         # Get data
         ann_file_data = ann_file.raw_data(expt_name=expt_name,restricted_list=ann_file.get_goodworms())
         raw_data = raw_data.append(ann_file_data)
-    raw_data[np.isnan(raw_data)]=-1 # Replace hanging entries for columns not contained in an experiment with -1
+    #raw_data[np.isnan(raw_data)]=-1 # Replace hanging entries for columns not contained in an experiment with -1
+    raw_data = raw_data.fillna(-1)
     return raw_data
 
 def write_annotation_data(data,output_file):
