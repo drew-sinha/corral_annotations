@@ -14,7 +14,6 @@ import sys
 '''
 TODO:
     Testing for missing info (empty notes, filled in one of the boxes incorrectly)
-    Mechanism for skipping to different animal
 '''
 
 class DeathDayEvaluator:
@@ -93,7 +92,7 @@ class DeathDayEvaluator:
             #worm_positions.append(r.group())
             worm_positions.append(r.group()[:-1])   # Remove trailing '/'
             all_images=glob.glob(item+self.image_glob)
-            all_images=list(map(pathlib.Path,all_images))
+            all_images=sorted(list(map(pathlib.Path,all_images)))
             meow.append(all_images)
         print('finished parsing inputs')
         return meow, worm_positions
@@ -124,7 +123,7 @@ class DeathDayEvaluator:
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
             self.nf.set_text(self.worm_info.loc[self.worm_positions[self.well_index]]['Notes'])
         else:
-            self.nf.set_text('')
+            self.nf.set_text('NOT DEAD')
     
     def save_annotations(self):
         self.record_labeled_positions() # Grab the latest annotations
@@ -149,6 +148,7 @@ class DeathDayEvaluator:
             self.worm_info = loaded_info
             self.labels = list(self.worm_info.columns.values)
             print('annotations read from '+str(load_path))
+            self.refresh_info()
     
     def goto_index(self):
         idx_dialog = Qt.QInputDialog()
