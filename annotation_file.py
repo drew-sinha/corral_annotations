@@ -143,7 +143,6 @@ class AnnotationFile:
             return out_data
         else:
             return out_data[restricted_list]
-        
     
     def get_goodworms(self, bad_worm_kws=[], restrict_to_hatched=False, expt_path=None):
         '''
@@ -209,7 +208,6 @@ def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
     '''
         Builds super-table of timestamped data from multiple experiments
     '''
-    
     timestamped_data = pd.DataFrame()
     if md_dict is None:
         for expt_dir in expt_dirs: 
@@ -239,7 +237,6 @@ def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
                     annotation_prefix='D')
                 ann_file_data = ann_file.data_as_timestamps(md_map,restricted_list=ann_file.get_goodworms(),expt_name=expt_name, as_timepoints=as_timepoints)
             timestamped_data = timestamped_data.append(ann_file_data)
-    #timestamped_data[np.isnan(timestamped_data)]=-1
     timestamped_data = timestamped_data.fillna(-1)
     return timestamped_data
 
@@ -259,7 +256,6 @@ def compile_expt_raw_data(expt_dirs):
         # Get data
         ann_file_data = ann_file.raw_data(expt_name=expt_name,restricted_list=ann_file.get_goodworms())
         raw_data = raw_data.append(ann_file_data)
-    #raw_data[np.isnan(raw_data)]=-1 # Replace hanging entries for columns not contained in an experiment with -1
     raw_data = raw_data.fillna(-1)
     return raw_data
 
