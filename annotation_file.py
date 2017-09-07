@@ -162,8 +162,9 @@ class AnnotationFile:
             #~ viable_worm = (self.data['Hatch']!='') \
                 #~ & (self.data['Death']!='') \
                 #~ & np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
-            viable_worm = (self.data['Hatch']!='') \
-                & np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
+            #~ viable_worm = (self.data['Hatch']!='') \
+                #~ & np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
+            viable_worm = np.array([('DEAD' in note and not 'NEVER LAID EGGS' in note) for note in self.data['Notes']])
         else:
             #~ viable_worm = (self.data['Hatch']!='') \
                 #~ & (self.data['Death']!='') \
@@ -195,7 +196,12 @@ class AnnotationFile:
         dead_worms = np.array(['NOT DEAD' not in note for note in self.data['Notes']])
         skip_idxs = np.where((~good_worms)|dead_worms)[0]
         index_str_size = np.count_nonzero([True if c.isdigit() else False for c in self.data['Worm'][0]])
-        return [str(idx).zfill(index_str_size) for idx in skip_idxs]
+        
+        # Print skip_positions string for experiment_metadata file
+        print('[' + ','.join(['"{}"'.format(str(idx).zfill(index_str_size)) for idx in skip_idxs])+']')
+        
+        #return [str(idx).zfill(index_str_size) for idx in skip_idxs]
+        return list(self.data['Worm'][skip_idxs])
     
     def save_timestamp_tsv(self, output_file):        
         if type(output_file) is not pathlib.Path:
