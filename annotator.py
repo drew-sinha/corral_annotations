@@ -119,10 +119,10 @@ class DeathDayEvaluator:
         # Repopulate page titles with information from worm_info
         for label in self.labels:
             if label != 'Notes' and (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label] \
-                and (int(self.worm_info.loc[self.worm_positions[self.well_index]][label]) in range(self.start_idx,self.stop_idx if self.stop_idx is not None else len(self.all_images[self.well_index]))): # Check if frame number in set of indices to be displayed
+                and (int(self.worm_info.loc[self.worm_positions[self.well_index]][label])-self.start_idx in range(self.start_idx,self.stop_idx if self.stop_idx is not None else len(self.all_images[self.well_index]))): # Check if frame number for this label is in the set of indices to be displayed
                 
                 self.rw.flipbook.pages[
-                    int(self.worm_info.loc[self.worm_positions[self.well_index]][label])].name=label
+                    int(self.worm_info.loc[self.worm_positions[self.well_index]][label])-self.start_idx].name=label
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
             self.nf.set_text(self.worm_info.loc[self.worm_positions[self.well_index]]['Notes'])
         else:
