@@ -153,7 +153,8 @@ class DeathDayEvaluator:
     def goto_index(self):
         idx_dialog = Qt.QInputDialog()
         idx_dialog.setInputMode(Qt.QInputDialog.IntInput)
-        if idx_dialog.exec_() and idx_dialog.intValue() in range(len(self.worm_positions)):
+        idx_dialog.setIntMaximum(len(self.worm_positions)-1) # Default is 100, so need to explicitly set
+        if idx_dialog.exec_():
             self.load_next_worm(idx_dialog.intValue(),0)
 
 class NoteField(Qt.QWidget):
