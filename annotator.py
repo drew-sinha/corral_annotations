@@ -112,6 +112,7 @@ class DeathDayEvaluator:
         self.well_index = index
         self.current_worm_position=self.worm_positions[index]
         self.rw.flipbook.add_image_files(self.all_images[index][self.start_idx:self.stop_idx if self.stop_idx is not None else len(self.all_images[index])])
+        self.rw.flipbook.pages_view.setFocus()
         self.refresh_info()
         
     def refresh_info(self):
