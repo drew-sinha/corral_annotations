@@ -80,6 +80,10 @@ class DeathDayEvaluator:
         gc.collect()    # Delete this; needed it to do appropriate cleanup on my computer with old RisWidget
         if self.all_images[index+offset]:
             self.set_index(index+offset)
+        
+        # Resets zoom to fit
+        #~ self.rw.main_view.zoom_to_fit_action.toggle()
+        
 
     def parse_inputs(self): 
         #subdirectories= glob.glob(self.in_dir+'/[0-9][0-9]*')
@@ -118,9 +122,17 @@ class DeathDayEvaluator:
     def refresh_info(self):
         # Repopulate page titles with information from worm_info
         for label in self.labels:
-            if label != 'Notes' and (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label] \
-                and (int(self.worm_info.loc[self.worm_positions[self.well_index]][label])-self.start_idx in range(self.start_idx,self.stop_idx if self.stop_idx is not None else len(self.all_images[self.well_index]))): # Check if frame number for this label is in the set of indices to be displayed
-                
+            LABEL_NULL = ~(self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label]
+            if LABEL_NULL: continue
+            
+            if self.stop_idx is not None: range_stop = self.stop_idx
+            else: range_stop = len(self.all_images[self.well_index])
+            print(range_stop)
+            
+            IDX_IN_RANGE = int(self.worm_info.loc[self.worm_positions[self.well_index]][label]) in range(self.start_idx, range_stop)
+            print(IDX_IN_RANGE)
+            
+            if label != 'Notes' and IDX_IN_RANGE:
                 self.rw.flipbook.pages[
                     int(self.worm_info.loc[self.worm_positions[self.well_index]][label])-self.start_idx].name=label
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
