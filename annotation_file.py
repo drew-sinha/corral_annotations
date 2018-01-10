@@ -169,8 +169,11 @@ class AnnotationFile:
             #~ viable_worm = (self.data['Hatch']!='') \
                 #~ & (self.data['Death']!='') \
                 #~ & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']])
+            #~ viable_worm = (self.data['Hatch']!='') \
+                #~ & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']])
             viable_worm = (self.data['Hatch']!='') \
-                & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']])
+                & np.array([not any([kw in note for kw in bad_worm_kws]) for note in self.data['Notes']]) \
+                & np.array(['DEAD' in note for note in self.data['Notes']])
         
         goodworms = viable_worm #& worm_was_acquired
         if expt_path is not None:   # Need to screen for wells that weren't acquired (i.e. deleted)
@@ -195,13 +198,19 @@ class AnnotationFile:
         good_worms = self.get_goodworms(bad_worm_kws=bad_worm_kws)
         dead_worms = np.array(['NOT DEAD' not in note for note in self.data['Notes']])
         skip_idxs = np.where((~good_worms)|dead_worms)[0]
-        index_str_size = np.count_nonzero([True if c.isdigit() else False for c in self.data['Worm'][0]])
+        try:
+            index_str_size = np.count_nonzero([True if c.isdigit() else False for c in self.data['Worm'][0]])
+        except KeyError: # Assume that the tsv is still formatted correctly, but column names haven't been edited yet
+            index_str_size = np.count_nonzero([True if c.isdigit() else False for c in self.data.iloc[0,0]])
         
         # Print skip_positions string for experiment_metadata file
         print('[' + ','.join(['"{}"'.format(str(idx).zfill(index_str_size)) for idx in skip_idxs])+']')
         
         #return [str(idx).zfill(index_str_size) for idx in skip_idxs]
-        return list(self.data['Worm'][skip_idxs])
+        try:
+            return list(self.data['Worm'][skip_idxs])
+        except KeyError: # Assume that the tsv is still formatted correctly, but column names haven't been edited yet
+            return list(self.data.iloc[skip_idxs,0])
     
     def save_timestamp_tsv(self, output_file):        
         if type(output_file) is not pathlib.Path:
@@ -209,6 +218,26 @@ class AnnotationFile:
         
         with output_file('w').open() as output_fp:
             self.data_as_timestamps(metadata_args).to_csv(sep='\t')
+    
+    def check_alldead(self):
+        still_alive = ['NOT DEAD' in note for note in self.data['Notes']]
+        print('The following animals are still alive:')
+        try:
+            print(self.data['Worm'].loc[still_alive])
+        except KeyError:
+            print(self.data.iloc[still_alive,0])
+    
+    def check_typos(self):
+        #~ missing_entry = ((self.data['Hatch'] == '') | 
+            #~ (self.data['First Egg Laid'] == '') | 
+            #~ (self.data['Death'] == ''))
+        null_entry = pd.isnull(self.data[[tag for tag in self.data.keys() if len(tag) > 0 and tag != 'Worm' and tag != 'Notes']]).any(axis=1)
+        emptystr_entry = self.data[[tag for tag in self.data.keys() if len(tag) > 0 and tag != 'Worm' and tag != 'Notes']].applymap(lambda elem:elem == '').any(axis=1)
+        missing_entry = null_entry & emptystr_entry & self.get_goodworms()
+        print('The following are missing one or more annotations:')
+        #~ print(self.data['Worm'].loc[missing_entry])
+        print(self.data.iloc[np.where(missing_entry)[0],0])
+    
 
 def compile_expt_timestamped_data(expt_dirs, md_dict=None,as_timepoints=False):
     '''
