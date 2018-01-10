@@ -2,7 +2,7 @@ import numpy
 import pathlib
 import re
 import datetime
-from zplib import util
+#from zplib import util
 from ris_widget import ris_widget
 import PyQt5.Qt as Qt
 import PyQt5.QtGui as QtGui
@@ -17,30 +17,21 @@ TODO:
 '''
 
 class DeathDayEvaluator:
-    def __init__(self, in_dir, image_glob, labels,autosave_dir=None, start_idx=0, stop_idx=None):
+    def __init__(self, in_dir, image_glob, labels,autosave_dir=None, start_idx=0, stop_idx=None, autoload_annotations = None):
         self.rw = ris_widget.RisWidget()
         self._init_notefield()
         
-        if type(autosave_dir) is str:
-            self.autosave_dir = pathlib.Path(autosave_dir)
-        else:
-            self.autosave_dir = autosave_dir
-        
+        self.autosave_dir = pathlib.Path(autosave_dir) if autosave_dir is not None else None
         self.in_dir = in_dir
         self.labels=labels
         self.image_glob=image_glob
         self.start_idx = start_idx
         self.stop_idx = stop_idx
         self.all_images, self.worm_positions=self.parse_inputs()
-        #self.dictionary=dict.fromkeys(self.worm_positions)
-        #for key, entry in self.dictionary.items():
-            #self.dictionary[key]=dict.fromkeys(labels)
         self.worm_info = pd.DataFrame(index=self.worm_positions,columns=self.labels+['Notes'])  # Add extra field for notes
 
         self.set_index(0)
         self.actions = []
-        #self._add_action('left', Qt.Qt.Key_Left, lambda: self.load_next_worm(self.well_index,-1))
-        #self._add_action('right', Qt.Qt.Key_Right, lambda: self.load_next_worm(self.well_index,1))
         self._add_action('prev', Qt.Qt.Key_BracketLeft, lambda: self.load_next_worm(self.well_index,-1))    # Changed these because I tended to accidentally hit side keys
         self._add_action('next', Qt.Qt.Key_BracketRight, lambda: self.load_next_worm(self.well_index,1))
         self._add_action('Save Annotations', QtGui.QKeySequence('Ctrl+S'),self.save_annotations)
@@ -50,6 +41,28 @@ class DeathDayEvaluator:
         self._add_action('Goto Index', QtGui.QKeySequence('Ctrl+G'), self.goto_index)
         self.rw.qt_object.main_view_toolbar.addAction(self.actions[-1])
         self.rw.show()
+        
+        if autoload_annotations:
+            if autoload_annotations  == 'autosave': # TODO fix/prevent overwriting the autosave file
+                load_path = pathlib.Path(autosave_dir) / 'annotator_autosave.tsv'
+                assert load_path.exists()
+            elif autoload_annotations == 'expt':
+                try:
+                    load_path = pathlib.Path([expt_file for expt_file in pathlib.Path(in_dir).iterdir()
+                        if '.tsv' in str(expt_file) and '~' not in str(expt_file)][0])
+                except FileNotFoundError:
+                    print('Couldn\'t find file')
+            
+            loaded_info = pd.read_csv(load_path.open(),sep='\t',index_col=0)
+            if (set(loaded_info.columns.values) != set(self.worm_info.columns.values)) or (set(loaded_info.index) != set(self.worm_info.index)):
+                print(loaded_info)
+                print(self.worm_info)
+                raise Exception('Bad annotation file')
+            
+            self.worm_info = loaded_info
+            self.labels = list(self.worm_info.columns.values)
+            print('annotations read from '+str(load_path))
+            self.refresh_info()
 
     def _init_notefield(self):  
         self.nf = NoteField(parent=self.rw.qt_object)
@@ -123,16 +136,16 @@ class DeathDayEvaluator:
         # Repopulate page titles with information from worm_info
         for label in self.labels:
             LABEL_NULL = ~(self.worm_info.loc[self.worm_positions[self.well_index]].notnull())[label]
-            if LABEL_NULL: continue
+            if LABEL_NULL or label == 'Notes': continue
             
             if self.stop_idx is not None: range_stop = self.stop_idx
             else: range_stop = len(self.all_images[self.well_index])
-            print(range_stop)
+            #print(range_stop)
             
             IDX_IN_RANGE = int(self.worm_info.loc[self.worm_positions[self.well_index]][label]) in range(self.start_idx, range_stop)
-            print(IDX_IN_RANGE)
+            #print(IDX_IN_RANGE)
             
-            if label != 'Notes' and IDX_IN_RANGE:
+            if IDX_IN_RANGE:
                 self.rw.flipbook.pages[
                     int(self.worm_info.loc[self.worm_positions[self.well_index]][label])-self.start_idx].name=label
         if (self.worm_info.loc[self.worm_positions[self.well_index]].notnull())['Notes']:
