@@ -4,6 +4,7 @@ from ris_widget import ris_widget
 import numpy as np
 import enum
 import json
+import glob
 
 '''
 PixelSelection - 
@@ -43,11 +44,13 @@ class Rect_Colors(enum.Enum):
     NEXT = QtGui.QColor(0,0,255)
 
 class PixelSelector:
-    def __init__(self, image_dir):
+    def __init__(self, image_dir, image_glob, show_contig_times=True):
         self.image_dir = pathlib.Path(image_dir)
-        image_files = [
-            image_file for image_file in self.image_dir.iterdir()
-                    if image_file.suffix in ['.png', '.tiff']]
+        self.image_glob = image_glob
+        self.show_contig_times = show_contig_times
+        
+        image_files = sorted(list(
+            glob.glob(str(self.image_dir / self.image_glob))))
         
         self.rw = ris_widget.RisWidget()
         self.rw.add_image_files_to_flipbook(image_files)
@@ -86,7 +89,7 @@ class PixelSelector:
                     continue
             rect = self.selection_rects[
                 self.rw.flipbook.current_page_idx + pg_offset]
-            if rect is not None:
+            if rect is not None and (pg_offset == 0 or self.show_contig_times):
                 rp = rect.pen()
                 rp.setColor(rect_color.value)
                 rect.setPen(rp)
@@ -144,6 +147,7 @@ def encode_compact_to_bytes(data):
 def encode_legible_to_file(data, f):
     for chunk in READABLE_ENCODER.iterencode(data):
         f.write(chunk)
+
 
 '''
     def record_selection(self,pos):
