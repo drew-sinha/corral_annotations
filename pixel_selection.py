@@ -95,6 +95,26 @@ class PixelSelector:
                 rect.setPen(rp)
                 self.rw.image_scene.addItem(rect)
     
+    def load_annotations(self):
+        file_dialog = Qt.QFileDialog()
+        file_dialog.setAcceptMode(Qt.QFileDialog.AcceptOpen)
+        if file_dialog.exec_():     # Run dialog box and check for a good exit
+            load_path = pathlib.Path(file_dialog.selectedFiles()[0])
+            loaded_info = json.load(load_path.open('r'))
+            if self.image_dir != loaded_info['image_dir']:
+                print(loaded_info)
+                print(self.worm_info)
+                raise Exception('Bad selection annotation file')
+            
+            self.selected_pos = loaded_info['selected_pos']
+            
+            qp = QtGui.QPen(Rect_Colors['CURRENT'].value)
+            qp.setCosmetic(True)
+            self.selection_rects = [self.rw.image_scene.addRect(int(x),int(y),1,1,
+                pen=qp) for (x,y) in self.selected_pos]
+            self.refresh_scene()
+            print('annotations read from '+str(load_path))
+    
     
     def save_annotations(self):
         file_dialog = Qt.QFileDialog()
