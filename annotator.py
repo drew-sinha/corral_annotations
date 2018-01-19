@@ -61,6 +61,10 @@ class DeathDayEvaluator:
             
             self.worm_info = loaded_info
             self.labels = list(self.worm_info.columns.values)
+            # Check if defaulted to float per Pandas 
+            # (occurs if no entries in Notes column in file)
+            if self.worm_info['Notes'].dtype is numpy.dtype('float64'): 
+                self.worm_info['Notes'] = ''  
             print('annotations read from '+str(load_path))
             self.refresh_info()
 
@@ -176,6 +180,10 @@ class DeathDayEvaluator:
             self.worm_info = loaded_info
             self.labels = list(self.worm_info.columns.values)
             print('annotations read from '+str(load_path))
+            # Check if defaulted to float per Pandas 
+            # (occurs if no entries in Notes column in file)
+            if self.worm_info['Notes'].dtype is numpy.dtype('float64'):
+                self.worm_info['Notes'] = ''  # Force columns to be empty string if neccessary
             self.refresh_info()
     
     def goto_index(self):
