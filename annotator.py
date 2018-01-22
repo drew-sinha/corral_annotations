@@ -91,13 +91,14 @@ class DeathDayEvaluator:
         #return self.dictionary    
    
     def load_next_worm(self,index,offset):
-        #self.dictionary=self.get_labeled_positions()
+        if self.autosave_dir is not None:
+            self.worm_info.to_csv((self.autosave_dir/'annotator_autosave.tsv').open('w'),sep='\t')
         self.record_labeled_positions()
         if(len(self.rw.flipbook.pages)>0): self.rw.flipbook.pages.clear()
         gc.collect()    # Delete this; needed it to do appropriate cleanup on my computer with old RisWidget
+        
         if self.all_images[index+offset]:
             self.set_index(index+offset)
-        
         # Resets zoom to fit
         #~ self.rw.main_view.zoom_to_fit_action.toggle()
         
@@ -126,10 +127,7 @@ class DeathDayEvaluator:
         action.triggered.connect(function)
         self.actions.append(action)
 
-    def set_index(self, index):
-        if self.autosave_dir is not None:
-            self.worm_info.to_csv((self.autosave_dir/'annotator_autosave.tsv').open('w'),sep='\t')
-        
+    def set_index(self, index):     
         self.well_index = index
         self.current_worm_position=self.worm_positions[index]
         self.rw.flipbook.add_image_files(self.all_images[index][self.start_idx:self.stop_idx if self.stop_idx is not None else len(self.all_images[index])])
