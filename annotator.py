@@ -163,7 +163,6 @@ class DeathDayEvaluator:
         file_dialog.setAcceptMode(Qt.QFileDialog.AcceptSave)
         if file_dialog.exec_():     # Run dialog box and check for a good exit
             save_path = pathlib.Path(file_dialog.selectedFiles()[0])
-            self.record_labeled_positions()
             self.worm_info.to_csv(save_path.open('w'),sep='\t')
             print('file written to '+str(save_path))
     
