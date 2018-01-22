@@ -43,7 +43,7 @@ class DeathDayEvaluator:
         self.rw.show()
         
         if autoload_annotations:
-            if autoload_annotations  == 'autosave': # TODO fix/prevent overwriting the autosave file
+            if autoload_annotations  == 'autosave':
                 load_path = pathlib.Path(autosave_dir) / 'annotator_autosave.tsv'
                 assert load_path.exists()
             elif autoload_annotations == 'expt':
@@ -91,14 +91,16 @@ class DeathDayEvaluator:
         #return self.dictionary    
    
     def load_next_worm(self,index,offset):
+        if index+offset not in range(len(self.worm_info)): # do nothing if trying to go out of bounds
+            return
+        
         if self.autosave_dir is not None:
             self.worm_info.to_csv((self.autosave_dir/'annotator_autosave.tsv').open('w'),sep='\t')
         self.record_labeled_positions()
         if(len(self.rw.flipbook.pages)>0): self.rw.flipbook.pages.clear()
         gc.collect()    # Delete this; needed it to do appropriate cleanup on my computer with old RisWidget
         
-        if self.all_images[index+offset]:
-            self.set_index(index+offset)
+        self.set_index(index+offset)
         # Resets zoom to fit
         #~ self.rw.main_view.zoom_to_fit_action.toggle()
         
