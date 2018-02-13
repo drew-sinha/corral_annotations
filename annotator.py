@@ -2,8 +2,8 @@ import numpy
 import pathlib
 import re
 import datetime
-#from zplib import util
-from ris_widget import ris_widget
+import ris_widget.ris_widget
+import ris_widget.image
 import PyQt5.Qt as Qt
 import PyQt5.QtGui as QtGui
 import glob
@@ -12,13 +12,15 @@ import gc
 import sys
 
 '''
-TODO:
-    Testing for missing info (empty notes, filled in one of the boxes incorrectly)
+    TODOs:
+        - Maybe add add'l toolbar for referencing/displaying the current worm (typable field instead of a 'Goto' button)
+        - Implement indexing for working with cleaned_directories (i.e. missing worms)
 '''
+
 
 class DeathDayEvaluator:
     def __init__(self, in_dir, image_glob, labels,autosave_dir=None, start_idx=0, stop_idx=None, autoload_annotations = None):
-        self.rw = ris_widget.RisWidget()
+        self.rw = ris_widget.ris_widget.RisWidget()
         self._init_notefield()
         
         self.autosave_dir = pathlib.Path(autosave_dir) if autosave_dir is not None else None
@@ -132,8 +134,12 @@ class DeathDayEvaluator:
     def set_index(self, index):     
         self.well_index = index
         self.current_worm_position=self.worm_positions[index]
-        self.rw.flipbook.add_image_files(self.all_images[index][self.start_idx:self.stop_idx if self.stop_idx is not None else len(self.all_images[index])])
-        self.rw.flipbook.pages_view.setFocus()
+        if self.start_idx <= len(self.all_images[index]): # For the case that a given stack ends at a timepoint past the desired start_idx (e.g. a no-hatch)
+            self.rw.flipbook.add_image_files(self.all_images[index][self.start_idx:self.stop_idx if self.stop_idx is not None else len(self.all_images[index])])
+            self.rw.flipbook.pages_view.setFocus()
+        else:
+            self.rw.layer_stack.layers[0].image=None
+            self.rw.image_view.setFocus() # Force the focus, else the zoom box gets the focus
         self.refresh_info()
         
     def refresh_info(self):
