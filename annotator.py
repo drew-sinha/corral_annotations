@@ -150,10 +150,8 @@ class DeathDayEvaluator:
             
             if self.stop_idx is not None: range_stop = self.stop_idx
             else: range_stop = len(self.all_images[self.well_index])
-            #print(range_stop)
             
             IDX_IN_RANGE = int(self.worm_info.loc[self.worm_positions[self.well_index]][label]) in range(self.start_idx, range_stop)
-            #print(IDX_IN_RANGE)
             
             if IDX_IN_RANGE:
                 self.rw.flipbook.pages[
