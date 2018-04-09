@@ -1,4 +1,5 @@
 from ris_widget.ris_widget import RisWidget
+from ris_widget import image
 from PyQt5 import Qt, QtGui
 import pathlib
 import pandas as pd
@@ -141,9 +142,9 @@ class MaskEditor:
             return
         self.current_page.inserted.connect(self._on_page_change)
         if len(self.current_page) < 2: return  # Both layers not loaded yet.
-        self.current_page[1]._data.dtype = np.bool
-        self.current_page[1].dtype = np.bool
-        self.current_page[1].refresh()
+        self.current_page[1] = image.Image(
+            self.current_page[1].data.astype('bool'),
+            name=self.current_page[1].name)
     
     def _on_edit_clicked(self):
         if self.editing:
@@ -152,7 +153,6 @@ class MaskEditor:
             self.start_editing()
             
     def start_editing(self):        
-        #Do everything in second layer; will need to modify Willie's code for worm measurement
         self.editing = True
         self.working_file = pathlib.Path(self.rw.layers[1].image.name)
         self.edit.setText('Save Edits')
@@ -167,9 +167,6 @@ class MaskEditor:
         self.rw.layers[1].tint = (1.0,0,0,1.0)
         self.rw.painter.show()
         self.rw.painter.widget.brush_size.value = 13
-        self.current_page[1]._data = (0*self.current_page[1]._data).astype('bool')
-        self.current_page[1].dtype = np.bool
-        self.current_page[1].refresh()
         
         
     def stop_editing(self,save_work=True):
@@ -178,9 +175,6 @@ class MaskEditor:
             self.rw.layers[1].image.data>0)
         new_mask = zplib_image_mask.fill_small_area_holes(outline,300000).astype('uint8')
         new_mask[new_mask>0] = -1
-        self.rw.layers[1].image._data = (new_mask>0).astype('bool')
-        self.rw.layers[1].image.dtype = np.bool
-        self.rw_layers[1].image.refresh()
         self.rw.layers[1].tint = (1.0,1.0,1.0,1.0)
         
         self.rw.painter.hide()
