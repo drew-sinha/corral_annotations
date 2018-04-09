@@ -17,6 +17,9 @@ class MaskEditor:
             expt_dir - superfolder for experiment
         '''
         self.rw = RisWidget()
+        self.rw.add_painter()
+        self.rw.painter.hide()
+        
         layout = Qt.QFormLayout()
         ME_widget = Qt.QWidget()
         ME_widget.setLayout(layout)
@@ -133,14 +136,14 @@ class MaskEditor:
                 self.stop_editing()
         
         # Repopulate current page data
-        self.current_page = self.rw.flipbook.focused_page
+        self.current_page = self.rw.flipbook.pages[self.rw.flipbook.current_page_idx]
         if self.current_page is None:
             return
         self.current_page.inserted.connect(self._on_page_change)
-        if len(self.current_page) == 0:
-            self.old_well = None
-            return
-        self.current_page[1].set(data=self.current_page[1].data.astype(bool))
+        if len(self.current_page) < 2: return  # Both layers not loaded yet.
+        self.current_page[1]._data.dtype = np.bool
+        self.current_page[1].dtype = np.bool
+        self.current_page[1].refresh()
     
     def _on_edit_clicked(self):
         if self.editing:
@@ -162,9 +165,11 @@ class MaskEditor:
         
         self.rw.layers[1].opacity = 0.5
         self.rw.layers[1].tint = (1.0,0,0,1.0)
-        self.rw.qt_object.layer_stack_painter_dock_widget.show()
-        self.rw.qt_object.layer_stack_painter.brush_size_lse.value = 13
-        self.current_page[1].set(data=(self.current_page[1].data*0).astype('bool'))
+        self.rw.painter.show()
+        self.rw.painter.widget.brush_size.value = 13
+        self.current_page[1]._data = (0*self.current_page[1]._data).astype('bool')
+        self.current_page[1].dtype = np.bool
+        self.current_page[1].refresh()
         
         
     def stop_editing(self,save_work=True):
@@ -173,10 +178,12 @@ class MaskEditor:
             self.rw.layers[1].image.data>0)
         new_mask = zplib_image_mask.fill_small_area_holes(outline,300000).astype('uint8')
         new_mask[new_mask>0] = -1
-        self.rw.layers[1].image.set(data=(new_mask>0).astype('bool'))
+        self.rw.layers[1].image._data = (new_mask>0).astype('bool')
+        self.rw.layers[1].image.dtype = np.bool
+        self.rw_layers[1].image.refresh()
         self.rw.layers[1].tint = (1.0,1.0,1.0,1.0)
         
-        self.rw.qt_object.layer_stack_painter_dock_widget.hide()
+        self.rw.painter.hide()
         if self.current_page[1].data.any():
             if not pathlib.Path(str(self.working_file).replace('mask.png','mask_oldwf.png')).exists():
                 self.working_file.rename(str(self.working_file).replace('mask.png','mask_oldwf.png'))
